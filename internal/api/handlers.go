@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/Igorjr19/go-shorty/internal/shortener"
@@ -48,9 +49,11 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	fullURL := fmt.Sprintf("http://%s/%s\n", r.Host, code)
+
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(ShortenResponse{Code: code})
+	w.Write([]byte(fullURL))
 }
 
 func (h *Handler) ResolveURL(w http.ResponseWriter, r *http.Request) {

@@ -16,8 +16,8 @@ func main() {
 
 	handler := api.NewHandler(service)
 
-	http.HandleFunc("POST /api/shorten", handler.ShortenURL)
-	http.HandleFunc("GET /api/{code}", handler.ResolveURL)
+	http.HandleFunc("POST /shorten", handler.ShortenURL)
+	http.HandleFunc("GET /{code}", handler.ResolveURL)
 
 	fmt.Println("Server started on :8080")
 	http.ListenAndServe(":8080", nil)
