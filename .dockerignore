@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+
+# Environment
+.env
+.env.*
+!.env.sample
+
+# Build artifacts
+bin/
+
+# Dependencies
+vendor/
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: go-shorty-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+      POSTGRES_DB: ${PGDATABASE:-shorty}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shorty-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-shorty-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE:-shorty}
+      PGUSER: ${PGUSER:-postgres}
+      PGPASSWORD: ${PGPASSWORD:-postgres}
+      PGSSLMODE: disable
+      PGCONNECT_TIMEOUT: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shorty-network
+
+volumes:
+  postgres_data:
+
+networks:
+  shorty-network:
+    driver: bridge
