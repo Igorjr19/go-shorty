@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"log"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/Igorjr19/go-shorty/internal/logger"
 )
 
 type RateLimiter interface {
@@ -102,7 +103,7 @@ func (rl *InMemoryRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 		ip := getIP(r)
 
 		if !rl.AllowRequest(ip) {
-			log.Printf("Rate limit exceeded for IP: %s", ip)
+			logger.RateLimitExceeded(r.Context(), ip, rl.rate, rl.window)
 			http.Error(w, "Rate limit exceeded. Try again later.", http.StatusTooManyRequests)
 			return
 		}

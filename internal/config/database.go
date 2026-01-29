@@ -1,11 +1,13 @@
 package config
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
+	"github.com/Igorjr19/go-shorty/internal/logger"
 	_ "github.com/lib/pq"
 )
 
@@ -21,18 +23,26 @@ func ConnectDB() *sql.DB {
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s connect_timeout=%s",
 		dbHost, dbPort, dbUser, dbPassword, dbName, dbUseSSL, dbConnectTimeout)
 
-	log.Printf("Connecting to database: host=%s port=%s dbname=%s user=%s", dbHost, dbPort, dbName, dbUser)
+	ctx := context.Background()
+	logger.Info(ctx, "Connecting to database",
+		slog.String("host", dbHost),
+		slog.String("port", dbPort),
+		slog.String("database", dbName),
+		slog.String("user", dbUser),
+	)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		logger.Error(ctx, "Failed to connect to database", slog.String("error", err.Error()))
+		panic(fmt.Sprintf("Unable to connect to database: %v", err))
 	}
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Unable to ping database: %v\n", err)
+		logger.Error(ctx, "Failed to ping database", slog.String("error", err.Error()))
+		panic(fmt.Sprintf("Unable to ping database: %v", err))
 	}
 
-	log.Println("Database connection established successfully")
+	logger.Info(ctx, "Database connection established successfully")
 
 	return db
 }
