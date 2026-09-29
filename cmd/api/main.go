@@ -18,14 +18,16 @@ import (
 
 func main() {
 
-	if err := godotenv.Load(); err != nil {
-
-	}
+	envErr := godotenv.Load()
 
 	env := getEnv("ENVIRONMENT", "development")
 	logger.Init(env)
 
 	ctx := logger.WithRequestID(context.Background(), "startup")
+
+	if envErr != nil {
+		logger.Info(ctx, "No .env file found, using environment variables")
+	}
 	logger.Info(ctx, "Starting go-shorty server",
 		slog.String("environment", env),
 		slog.String("version", "1.0.0"),
