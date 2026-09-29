@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Igorjr19/go-shorty/internal/api"
@@ -33,7 +35,10 @@ func main() {
 		slog.String("version", "1.0.0"),
 	)
 
-	store := storage.NewPostgresStorage(config.ConnectDB())
+	db := config.ConnectDB()
+	defer db.Close()
+
+	store := storage.NewPostgresStorage(db)
 
 	service := shortener.NewService(store)
 
@@ -53,12 +58,42 @@ func main() {
 	)
 
 	port := getEnv("PORT", "8080")
-	logger.Info(ctx, "Server started", slog.String("port", port))
-
-	if err := http.ListenAndServe(":"+port, finalHandler); err != nil {
-		logger.Error(ctx, "Server failed to start", slog.String("error", err.Error()))
-		os.Exit(1)
+	server := &http.Server{
+		Addr:              ":" + port,
+		Handler:           finalHandler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErr := make(chan error, 1)
+	go func() {
+		logger.Info(ctx, "Server started", slog.String("port", port))
+		serverErr <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErr:
+		logger.Error(ctx, "Server failed to start", slog.String("error", err.Error()))
+		db.Close()
+		os.Exit(1)
+	case <-stopCtx.Done():
+		logger.Info(ctx, "Shutdown signal received, draining connections")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error(ctx, "Graceful shutdown failed", slog.String("error", err.Error()))
+		return
+	}
+
+	logger.Info(ctx, "Server stopped")
 }
 
 func getEnv(key, defaultValue string) string {
