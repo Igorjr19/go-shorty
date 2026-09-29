@@ -75,6 +75,10 @@ func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
 	return link.OriginalURL, nil
 }
 
+func (s *Service) Stats(ctx context.Context, code string) (entity.Link, error) {
+	return s.storage.Load(ctx, code)
+}
+
 func validateURL(rawURL string) error {
 	parsed, err := url.ParseRequestURI(rawURL)
 	if err != nil {

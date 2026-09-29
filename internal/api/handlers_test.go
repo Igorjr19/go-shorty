@@ -34,6 +34,7 @@ func newTestServerWithBaseURL(t *testing.T, baseURL string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /shorten", handler.ShortenURL)
 	mux.HandleFunc("GET /{code}", handler.ResolveURL)
+	mux.HandleFunc("GET /{code}/stats", handler.Stats)
 	return mux
 }
 
@@ -166,6 +167,52 @@ func shorten(t *testing.T, mux *http.ServeMux, body string) ShortenResponse {
 	return resp
 }
 
+func TestStats_ReturnsVisits(t *testing.T) {
+	mux := newTestServer(t)
+	original := "https://example.com"
+	resp := shorten(t, mux, `{"url":"`+original+`"}`)
+
+	for range 2 {
+		mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/"+resp.Code, nil))
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/"+resp.Code+"/stats", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var stats StatsResponse
+	if err := json.NewDecoder(rec.Body).Decode(&stats); err != nil {
+		t.Fatalf("decode stats: %v", err)
+	}
+	if stats.Code != resp.Code || stats.OriginalURL != original || stats.Visits != 2 {
+		t.Errorf("stats = %+v, want code %q, url %q, 2 visits", stats, resp.Code, original)
+	}
+	if stats.CreatedAt.IsZero() {
+		t.Error("created_at is zero")
+	}
+}
+
+func TestStats_NotFound(t *testing.T) {
+	mux := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/missing/stats", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	var body ErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil || body.Error == "" {
+		t.Errorf("body is not a JSON error: %v", err)
+	}
+}
+
 type failingStorage struct {
 	storage.Storage
 }
@@ -184,6 +231,20 @@ func TestResolveURL_StorageError(t *testing.T) {
 	mux.HandleFunc("GET /{code}", handler.ResolveURL)
 
 	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestStats_StorageError(t *testing.T) {
+	handler := NewHandler(shortener.NewService(failingStorage{}), "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{code}/stats", handler.Stats)
+
+	req := httptest.NewRequest(http.MethodGet, "/abc123/stats", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
