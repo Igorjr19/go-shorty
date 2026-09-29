@@ -64,6 +64,26 @@ func TestPostgresStorage_SaveAndLoad(t *testing.T) {
 	}
 }
 
+func TestPostgresStorage_PreservesCreatedAtInstant(t *testing.T) {
+	s := newTestPostgresStorage(t)
+	saoPaulo := time.FixedZone("UTC-3", -3*60*60)
+	createdAt := time.Date(2026, 9, 28, 21, 0, 0, 0, saoPaulo)
+	link := entity.Link{Code: "tst005", OriginalURL: "https://example.com", CreatedAt: createdAt}
+	cleanupLink(t, s, link.Code)
+
+	if err := s.Save(t.Context(), link); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	got, err := s.Load(t.Context(), link.Code)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !got.CreatedAt.Equal(createdAt) {
+		t.Errorf("CreatedAt = %v, want %v (diff %v)", got.CreatedAt, createdAt, got.CreatedAt.Sub(createdAt))
+	}
+}
+
 func TestPostgresStorage_LoadNotFound(t *testing.T) {
 	s := newTestPostgresStorage(t)
 
