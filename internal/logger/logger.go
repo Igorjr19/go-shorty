@@ -13,7 +13,7 @@ const (
 	RequestIDKey contextKey = "request_id"
 )
 
-var log *slog.Logger
+var log = slog.Default()
 
 func Init(env string) {
 	var handler slog.Handler
