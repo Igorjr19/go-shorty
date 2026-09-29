@@ -37,8 +37,8 @@ func main() {
 
 	handler := api.NewHandler(service)
 
-	var readRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(10, time.Minute)
-	var writeRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(1000, time.Minute)
+	var readRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(1000, time.Minute)
+	var writeRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(10, time.Minute)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /shorten", writeRateLimiter.Limit(handler.ShortenURL))
