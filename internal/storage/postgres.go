@@ -3,23 +3,17 @@ package storage
 import (
 	"database/sql"
 
-	"github.com/lib/pq"
-
-	"github.com/Igorjr19/go-shorty/internal/config"
 	"github.com/Igorjr19/go-shorty/internal/entity"
 )
 
 type PostgresStorage struct {
 	db *sql.DB
-	pq.Config
 }
 
 func NewPostgresStorage(db *sql.DB) *PostgresStorage {
-	defer db.Close()
 	return &PostgresStorage{
-		db: config.ConnectDB(),
+		db: db,
 	}
-
 }
 
 func (p *PostgresStorage) Save(link entity.Link) error {
