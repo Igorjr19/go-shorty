@@ -46,8 +46,8 @@ func main() {
 	mux.HandleFunc("POST /shorten", writeRateLimiter.Limit(handler.ShortenURL))
 	mux.HandleFunc("GET /{code}", readRateLimiter.Limit(handler.ResolveURL))
 
-	finalHandler := middleware.RecoverMiddleware(
-		middleware.LoggingMiddleware(mux),
+	finalHandler := middleware.LoggingMiddleware(
+		middleware.RecoverMiddleware(mux),
 	)
 
 	port := getEnv("PORT", "8080")
