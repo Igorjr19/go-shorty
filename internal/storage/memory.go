@@ -37,3 +37,15 @@ func (m *MemoryStorage) Load(_ context.Context, code string) (entity.Link, error
 	}
 	return link, nil
 }
+
+func (m *MemoryStorage) Visit(_ context.Context, code string) (entity.Link, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	link, exists := m.data[code]
+	if !exists {
+		return entity.Link{}, ErrNotFound
+	}
+	link.Visits++
+	m.data[code] = link
+	return link, nil
+}

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Igorjr19/go-shorty/internal/logger"
 	"github.com/Igorjr19/go-shorty/internal/shortener"
@@ -19,6 +20,13 @@ type ShortenRequest struct {
 type ShortenResponse struct {
 	Code     string `json:"code"`
 	ShortURL string `json:"short_url"`
+}
+
+type StatsResponse struct {
+	Code        string    `json:"code"`
+	OriginalURL string    `json:"original_url"`
+	Visits      int64     `json:"visits"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type ErrorResponse struct {
@@ -105,6 +113,32 @@ func (h *Handler) ResolveURL(w http.ResponseWriter, r *http.Request) {
 	)
 
 	http.Redirect(w, r, url, http.StatusFound)
+}
+
+func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	link, err := h.service.Stats(r.Context(), code)
+	if errors.Is(err, storage.ErrNotFound) {
+		logger.Warn(r.Context(), "Short URL not found", slog.String("code", code))
+		writeError(w, "Short URL not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		logger.Error(r.Context(), "Failed to load short URL stats",
+			slog.String("code", code),
+			slog.String("error", err.Error()),
+		)
+		writeError(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, StatsResponse{
+		Code:        link.Code,
+		OriginalURL: link.OriginalURL,
+		Visits:      link.Visits,
+		CreatedAt:   link.CreatedAt,
+	})
 }
 
 func (h *Handler) shortURL(r *http.Request, code string) string {

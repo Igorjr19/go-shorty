@@ -161,6 +161,61 @@ func TestService_ShortenReturnsStorageError(t *testing.T) {
 	}
 }
 
+func TestService_ResolveCountsVisits(t *testing.T) {
+	store := storage.NewMemoryStorage()
+	svc := NewService(store)
+
+	code, err := svc.Shorten(t.Context(), "https://example.com")
+	if err != nil {
+		t.Fatalf("Shorten() error = %v", err)
+	}
+
+	for range 3 {
+		if _, err := svc.Resolve(t.Context(), code); err != nil {
+			t.Fatalf("Resolve() error = %v", err)
+		}
+	}
+
+	link, _ := store.Load(t.Context(), code)
+	if link.Visits != 3 {
+		t.Errorf("Visits = %d, want 3", link.Visits)
+	}
+}
+
+func TestService_Stats(t *testing.T) {
+	svc := NewService(storage.NewMemoryStorage())
+
+	code, err := svc.Shorten(t.Context(), "https://example.com")
+	if err != nil {
+		t.Fatalf("Shorten() error = %v", err)
+	}
+	svc.Resolve(t.Context(), code)
+	svc.Resolve(t.Context(), code)
+
+	link, err := svc.Stats(t.Context(), code)
+	if err != nil {
+		t.Fatalf("Stats() error = %v", err)
+	}
+	if link.Visits != 2 {
+		t.Errorf("Visits = %d, want 2", link.Visits)
+	}
+	if link.OriginalURL != "https://example.com" {
+		t.Errorf("OriginalURL = %q, want %q", link.OriginalURL, "https://example.com")
+	}
+}
+
+func TestService_StatsDoesNotCountVisit(t *testing.T) {
+	svc := NewService(storage.NewMemoryStorage())
+
+	code, _ := svc.Shorten(t.Context(), "https://example.com")
+	svc.Stats(t.Context(), code)
+
+	link, _ := svc.Stats(t.Context(), code)
+	if link.Visits != 0 {
+		t.Errorf("Visits = %d, want 0", link.Visits)
+	}
+}
+
 func TestService_ResolveNotFound(t *testing.T) {
 	svc := NewService(storage.NewMemoryStorage())
 

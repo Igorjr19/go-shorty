@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,12 +64,98 @@ func TestPostgresStorage_SaveAndLoad(t *testing.T) {
 	}
 }
 
+func TestPostgresStorage_PreservesCreatedAtInstant(t *testing.T) {
+	s := newTestPostgresStorage(t)
+	saoPaulo := time.FixedZone("UTC-3", -3*60*60)
+	createdAt := time.Date(2026, 9, 28, 21, 0, 0, 0, saoPaulo)
+	link := entity.Link{Code: "tst005", OriginalURL: "https://example.com", CreatedAt: createdAt}
+	cleanupLink(t, s, link.Code)
+
+	if err := s.Save(t.Context(), link); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	got, err := s.Load(t.Context(), link.Code)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !got.CreatedAt.Equal(createdAt) {
+		t.Errorf("CreatedAt = %v, want %v (diff %v)", got.CreatedAt, createdAt, got.CreatedAt.Sub(createdAt))
+	}
+}
+
 func TestPostgresStorage_LoadNotFound(t *testing.T) {
 	s := newTestPostgresStorage(t)
 
 	_, err := s.Load(t.Context(), "missing")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Load() error = %v, want %v", err, ErrNotFound)
+	}
+}
+
+func TestPostgresStorage_Visit(t *testing.T) {
+	s := newTestPostgresStorage(t)
+	link := entity.Link{Code: "tst003", OriginalURL: "https://example.com", CreatedAt: time.Now()}
+	cleanupLink(t, s, link.Code)
+
+	if err := s.Save(t.Context(), link); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	for want := int64(1); want <= 3; want++ {
+		got, err := s.Visit(t.Context(), link.Code)
+		if err != nil {
+			t.Fatalf("Visit() error = %v", err)
+		}
+		if got.Visits != want {
+			t.Errorf("Visit().Visits = %d, want %d", got.Visits, want)
+		}
+		if got.OriginalURL != link.OriginalURL {
+			t.Errorf("Visit().OriginalURL = %q, want %q", got.OriginalURL, link.OriginalURL)
+		}
+	}
+
+	loaded, err := s.Load(t.Context(), link.Code)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.Visits != 3 {
+		t.Errorf("Load().Visits = %d, want 3", loaded.Visits)
+	}
+}
+
+func TestPostgresStorage_VisitConcurrent(t *testing.T) {
+	s := newTestPostgresStorage(t)
+	link := entity.Link{Code: "tst004", OriginalURL: "https://example.com", CreatedAt: time.Now()}
+	cleanupLink(t, s, link.Code)
+
+	if err := s.Save(t.Context(), link); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	const visitors = 50
+	var wg sync.WaitGroup
+	for range visitors {
+		wg.Go(func() {
+			if _, err := s.Visit(t.Context(), link.Code); err != nil {
+				t.Errorf("Visit() error = %v", err)
+			}
+		})
+	}
+	wg.Wait()
+
+	loaded, _ := s.Load(t.Context(), link.Code)
+	if loaded.Visits != visitors {
+		t.Errorf("Visits = %d, want %d", loaded.Visits, visitors)
+	}
+}
+
+func TestPostgresStorage_VisitNotFound(t *testing.T) {
+	s := newTestPostgresStorage(t)
+
+	_, err := s.Visit(t.Context(), "missing")
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Visit() error = %v, want %v", err, ErrNotFound)
 	}
 }
 

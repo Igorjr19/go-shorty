@@ -53,6 +53,7 @@ func main() {
 	mux.HandleFunc("GET /healthz", api.HealthHandler(db))
 	mux.HandleFunc("POST /shorten", writeRateLimiter.Limit(handler.ShortenURL))
 	mux.HandleFunc("GET /{code}", readRateLimiter.Limit(handler.ResolveURL))
+	mux.HandleFunc("GET /{code}/stats", readRateLimiter.Limit(handler.Stats))
 
 	finalHandler := middleware.LoggingMiddleware(
 		middleware.RecoverMiddleware(mux),

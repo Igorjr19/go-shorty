@@ -43,7 +43,23 @@ Errors return a JSON body like `{"error":"URL is required"}`:
 
 ### Resolve a short URL
 
-`GET /{code}` redirects to the original URL with `302 Found`, or returns `404` if the code does not exist. Limited to 1000 requests/minute per IP.
+`GET /{code}` redirects to the original URL with `302 Found` and counts the visit, or returns `404` if the code does not exist. Limited to 1000 requests/minute per IP.
+
+### Stats
+
+`GET /{code}/stats`
+
+```bash
+curl http://localhost:8080/aB3xY9/stats
+```
+
+`200 OK`
+
+```json
+{"code":"aB3xY9","original_url":"https://go.dev","visits":42,"created_at":"2026-09-28T21:00:00Z"}
+```
+
+Returns `404` if the code does not exist. Reading stats does not count as a visit.
 
 ### Health check
 
@@ -101,11 +117,11 @@ Format: `NNN_description.{up|down}.sql`
 Create new migration:
 
 ```bash
-# migrations/003_add_visits.up.sql
-ALTER TABLE links ADD COLUMN visits INT DEFAULT 0;
+# migrations/005_add_expires_at.up.sql
+ALTER TABLE links ADD COLUMN expires_at TIMESTAMP;
 
-# migrations/003_add_visits.down.sql
-ALTER TABLE links DROP COLUMN visits;
+# migrations/005_add_expires_at.down.sql
+ALTER TABLE links DROP COLUMN expires_at;
 ```
 
 Execute:
