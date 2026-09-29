@@ -37,6 +37,8 @@ func main() {
 
 	handler := api.NewHandler(service)
 
+	middleware.TrustProxyHeaders = getEnv("TRUST_PROXY_HEADERS", "false") == "true"
+
 	var readRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(1000, time.Minute)
 	var writeRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(10, time.Minute)
 

@@ -3,6 +3,7 @@ package middleware
 import (
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,21 +113,18 @@ func (rl *InMemoryRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func getIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		ip := forwarded
-		for idx := 0; idx < len(forwarded); idx++ {
-			if forwarded[idx] == ',' {
-				ip = forwarded[:idx]
-				break
-			}
-		}
-		return ip
-	}
+var TrustProxyHeaders = false
 
-	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
-		return realIP
+func getIP(r *http.Request) string {
+	if TrustProxyHeaders {
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			ip, _, _ := strings.Cut(forwarded, ",")
+			return strings.TrimSpace(ip)
+		}
+
+		if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+			return realIP
+		}
 	}
 
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
