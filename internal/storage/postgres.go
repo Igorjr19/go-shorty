@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -21,9 +22,9 @@ func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 	}
 }
 
-func (p *PostgresStorage) Save(link entity.Link) error {
+func (p *PostgresStorage) Save(ctx context.Context, link entity.Link) error {
 	q := `INSERT INTO links (code, original_url, created_at) VALUES ($1, $2, $3)`
-	_, err := p.db.Exec(q, link.Code, link.OriginalURL, link.CreatedAt)
+	_, err := p.db.ExecContext(ctx, q, link.Code, link.OriginalURL, link.CreatedAt)
 
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) && pqErr.Code == pgUniqueViolation {
@@ -32,9 +33,9 @@ func (p *PostgresStorage) Save(link entity.Link) error {
 	return err
 }
 
-func (p *PostgresStorage) Load(code string) (entity.Link, error) {
+func (p *PostgresStorage) Load(ctx context.Context, code string) (entity.Link, error) {
 	q := `SELECT code, original_url, created_at FROM links WHERE code = $1`
-	row := p.db.QueryRow(q, code)
+	row := p.db.QueryRowContext(ctx, q, code)
 
 	var link entity.Link
 	err := row.Scan(&link.Code, &link.OriginalURL, &link.CreatedAt)

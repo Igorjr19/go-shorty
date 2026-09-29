@@ -50,11 +50,11 @@ func TestPostgresStorage_SaveAndLoad(t *testing.T) {
 	link := entity.Link{Code: "tst001", OriginalURL: "https://example.com", CreatedAt: time.Now()}
 	cleanupLink(t, s, link.Code)
 
-	if err := s.Save(link); err != nil {
+	if err := s.Save(t.Context(), link); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	got, err := s.Load(link.Code)
+	got, err := s.Load(t.Context(), link.Code)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -66,7 +66,7 @@ func TestPostgresStorage_SaveAndLoad(t *testing.T) {
 func TestPostgresStorage_LoadNotFound(t *testing.T) {
 	s := newTestPostgresStorage(t)
 
-	_, err := s.Load("missing")
+	_, err := s.Load(t.Context(), "missing")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Load() error = %v, want %v", err, ErrNotFound)
 	}
@@ -77,11 +77,11 @@ func TestPostgresStorage_SaveDuplicateCode(t *testing.T) {
 	link := entity.Link{Code: "tst002", OriginalURL: "https://example.com", CreatedAt: time.Now()}
 	cleanupLink(t, s, link.Code)
 
-	if err := s.Save(link); err != nil {
+	if err := s.Save(t.Context(), link); err != nil {
 		t.Fatalf("first Save() error = %v", err)
 	}
 
-	if err := s.Save(link); !errors.Is(err, ErrCodeExists) {
+	if err := s.Save(t.Context(), link); !errors.Is(err, ErrCodeExists) {
 		t.Errorf("second Save() error = %v, want %v", err, ErrCodeExists)
 	}
 }

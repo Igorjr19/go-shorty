@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Igorjr19/go-shorty/internal/entity"
@@ -12,6 +13,6 @@ var (
 )
 
 type Storage interface {
-	Save(entity.Link) error
-	Load(code string) (entity.Link, error)
+	Save(ctx context.Context, link entity.Link) error
+	Load(ctx context.Context, code string) (entity.Link, error)
 }

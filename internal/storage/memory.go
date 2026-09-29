@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 
 	"github.com/Igorjr19/go-shorty/internal/entity"
@@ -17,7 +18,7 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (m *MemoryStorage) Save(link entity.Link) error {
+func (m *MemoryStorage) Save(_ context.Context, link entity.Link) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, exists := m.data[link.Code]; exists {
@@ -27,7 +28,7 @@ func (m *MemoryStorage) Save(link entity.Link) error {
 	return nil
 }
 
-func (m *MemoryStorage) Load(code string) (entity.Link, error) {
+func (m *MemoryStorage) Load(_ context.Context, code string) (entity.Link, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	link, exists := m.data[code]

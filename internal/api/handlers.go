@@ -45,7 +45,7 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug(r.Context(), "Creating short URL", slog.String("original_url", req.URL))
 
-	code, err := h.service.Shorten(req.URL)
+	code, err := h.service.Shorten(r.Context(), req.URL)
 	if errors.Is(err, shortener.ErrInvalidURL) {
 		logger.Warn(r.Context(), "Invalid URL provided", slog.String("original_url", req.URL))
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -77,7 +77,7 @@ func (h *Handler) ResolveURL(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug(r.Context(), "Resolving short URL", slog.String("code", code))
 
-	url, err := h.service.Resolve(code)
+	url, err := h.service.Resolve(r.Context(), code)
 	if err != nil {
 		logger.Warn(r.Context(), "Short URL not found", slog.String("code", code))
 		http.NotFound(w, r)
