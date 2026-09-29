@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -50,6 +51,11 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	logger.Debug(r.Context(), "Creating short URL", slog.String("original_url", req.URL))
 
 	code, err := h.service.Shorten(req.URL)
+	if errors.Is(err, shortener.ErrInvalidURL) {
+		logger.Warn(r.Context(), "Invalid URL provided", slog.String("original_url", req.URL))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		logger.Error(r.Context(), "Failed to create short URL",
 			slog.String("original_url", req.URL),

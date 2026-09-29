@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"time"
 
 	"github.com/Igorjr19/go-shorty/internal/entity"
@@ -17,7 +18,10 @@ const (
 	maxSaveRetries = 5
 )
 
-var ErrCodeGenerationFailed = errors.New("could not generate a unique code")
+var (
+	ErrCodeGenerationFailed = errors.New("could not generate a unique code")
+	ErrInvalidURL           = errors.New("invalid url: must be an absolute http or https url")
+)
 
 type Service struct {
 	storage storage.Storage
@@ -29,7 +33,11 @@ func NewService(storage storage.Storage) *Service {
 	}
 }
 
-func (s *Service) Shorten(url string) (string, error) {
+func (s *Service) Shorten(rawURL string) (string, error) {
+	if err := validateURL(rawURL); err != nil {
+		return "", err
+	}
+
 	for range maxSaveRetries {
 		code, err := generateCode()
 		if err != nil {
@@ -38,7 +46,7 @@ func (s *Service) Shorten(url string) (string, error) {
 
 		link := entity.Link{
 			Code:        code,
-			OriginalURL: url,
+			OriginalURL: rawURL,
 			CreatedAt:   time.Now(),
 		}
 
@@ -64,6 +72,23 @@ func (s *Service) Resolve(code string) (string, error) {
 	}
 
 	return link.OriginalURL, nil
+}
+
+func validateURL(rawURL string) error {
+	parsed, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return ErrInvalidURL
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ErrInvalidURL
+	}
+
+	if parsed.Host == "" {
+		return ErrInvalidURL
+	}
+
+	return nil
 }
 
 func generateCode() (string, error) {
