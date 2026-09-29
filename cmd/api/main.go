@@ -50,6 +50,7 @@ func main() {
 	var writeRateLimiter middleware.RateLimiter = middleware.NewInMemoryRateLimiter(10, time.Minute)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", api.HealthHandler(db))
 	mux.HandleFunc("POST /shorten", writeRateLimiter.Limit(handler.ShortenURL))
 	mux.HandleFunc("GET /{code}", readRateLimiter.Limit(handler.ResolveURL))
 

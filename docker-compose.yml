@@ -35,6 +35,11 @@ services:
       PGPASSWORD: ${PGPASSWORD:-postgres}
       PGSSLMODE: disable
       PGCONNECT_TIMEOUT: 20
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
