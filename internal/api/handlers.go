@@ -30,11 +30,6 @@ func NewHandler(service *shortener.Service) *Handler {
 }
 
 func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req ShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(r.Context(), "Invalid request body", slog.String("error", err.Error()))
@@ -78,21 +73,7 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ResolveURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	code := r.PathValue("code")
-	if code == "" {
-		code = r.URL.Path[1:]
-	}
-
-	if code == "" {
-		logger.Warn(r.Context(), "Code is required but not provided")
-		http.Error(w, "Code is required", http.StatusBadRequest)
-		return
-	}
 
 	logger.Debug(r.Context(), "Resolving short URL", slog.String("code", code))
 
