@@ -91,7 +91,7 @@ func HTTPRequest(ctx context.Context, method, path, ip string, statusCode int, l
 		slog.String("path", path),
 		slog.String("ip", ip),
 		slog.Int("status", statusCode),
-		slog.Duration("latency_ms", latency),
+		slog.Float64("latency_ms", float64(latency.Microseconds())/1000),
 	}
 
 	if err != nil {
@@ -113,7 +113,7 @@ func RateLimitExceeded(ctx context.Context, ip string, limit int, window time.Du
 func DatabaseQuery(ctx context.Context, query string, duration time.Duration, err error) {
 	attrs := []any{
 		slog.String("query", query),
-		slog.Duration("duration_ms", duration),
+		slog.Float64("duration_ms", float64(duration.Microseconds())/1000),
 	}
 
 	if err != nil {
