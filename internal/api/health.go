@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
@@ -29,8 +28,6 @@ func HealthHandler(db Pinger) http.HandlerFunc {
 			status, resp = http.StatusServiceUnavailable, HealthResponse{Status: "unavailable"}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		json.NewEncoder(w).Encode(resp)
+		writeJSON(w, status, resp)
 	}
 }

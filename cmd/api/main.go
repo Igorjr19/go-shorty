@@ -42,7 +42,7 @@ func main() {
 
 	service := shortener.NewService(store)
 
-	handler := api.NewHandler(service)
+	handler := api.NewHandler(service, getEnv("BASE_URL", ""))
 
 	middleware.TrustProxyHeaders = getEnv("TRUST_PROXY_HEADERS", "false") == "true"
 
