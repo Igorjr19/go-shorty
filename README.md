@@ -117,10 +117,10 @@ Format: `NNN_description.{up|down}.sql`
 Create new migration:
 
 ```bash
-# migrations/004_add_expires_at.up.sql
+# migrations/005_add_expires_at.up.sql
 ALTER TABLE links ADD COLUMN expires_at TIMESTAMP;
 
-# migrations/004_add_expires_at.down.sql
+# migrations/005_add_expires_at.down.sql
 ALTER TABLE links DROP COLUMN expires_at;
 ```
 
