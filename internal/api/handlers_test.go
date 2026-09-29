@@ -174,6 +174,10 @@ func (failingStorage) Load(context.Context, string) (entity.Link, error) {
 	return entity.Link{}, errors.New("connection refused")
 }
 
+func (failingStorage) Visit(context.Context, string) (entity.Link, error) {
+	return entity.Link{}, errors.New("connection refused")
+}
+
 func TestResolveURL_StorageError(t *testing.T) {
 	handler := NewHandler(shortener.NewService(failingStorage{}), "")
 	mux := http.NewServeMux()

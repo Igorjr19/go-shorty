@@ -15,4 +15,5 @@ var (
 type Storage interface {
 	Save(ctx context.Context, link entity.Link) error
 	Load(ctx context.Context, code string) (entity.Link, error)
+	Visit(ctx context.Context, code string) (entity.Link, error)
 }

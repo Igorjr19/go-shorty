@@ -161,6 +161,27 @@ func TestService_ShortenReturnsStorageError(t *testing.T) {
 	}
 }
 
+func TestService_ResolveCountsVisits(t *testing.T) {
+	store := storage.NewMemoryStorage()
+	svc := NewService(store)
+
+	code, err := svc.Shorten(t.Context(), "https://example.com")
+	if err != nil {
+		t.Fatalf("Shorten() error = %v", err)
+	}
+
+	for range 3 {
+		if _, err := svc.Resolve(t.Context(), code); err != nil {
+			t.Fatalf("Resolve() error = %v", err)
+		}
+	}
+
+	link, _ := store.Load(t.Context(), code)
+	if link.Visits != 3 {
+		t.Errorf("Visits = %d, want 3", link.Visits)
+	}
+}
+
 func TestService_ResolveNotFound(t *testing.T) {
 	svc := NewService(storage.NewMemoryStorage())
 

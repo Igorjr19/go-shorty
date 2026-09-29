@@ -34,6 +34,38 @@ func TestMemoryStorage_LoadNotFound(t *testing.T) {
 	}
 }
 
+func TestMemoryStorage_Visit(t *testing.T) {
+	s := NewMemoryStorage()
+	link := entity.Link{Code: "abc123", OriginalURL: "https://example.com", CreatedAt: time.Now()}
+	if err := s.Save(t.Context(), link); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	for want := int64(1); want <= 3; want++ {
+		got, err := s.Visit(t.Context(), link.Code)
+		if err != nil {
+			t.Fatalf("Visit() error = %v", err)
+		}
+		if got.Visits != want {
+			t.Errorf("Visit().Visits = %d, want %d", got.Visits, want)
+		}
+	}
+
+	loaded, _ := s.Load(t.Context(), link.Code)
+	if loaded.Visits != 3 {
+		t.Errorf("Load().Visits = %d, want 3", loaded.Visits)
+	}
+}
+
+func TestMemoryStorage_VisitNotFound(t *testing.T) {
+	s := NewMemoryStorage()
+
+	_, err := s.Visit(t.Context(), "missing")
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Visit() error = %v, want %v", err, ErrNotFound)
+	}
+}
+
 func TestMemoryStorage_SaveDuplicateCode(t *testing.T) {
 	s := NewMemoryStorage()
 	link := entity.Link{Code: "abc123", OriginalURL: "https://example.com", CreatedAt: time.Now()}

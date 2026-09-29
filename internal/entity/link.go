@@ -6,4 +6,5 @@ type Link struct {
 	Code        string
 	OriginalURL string
 	CreatedAt   time.Time
+	Visits      int64
 }

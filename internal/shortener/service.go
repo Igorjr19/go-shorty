@@ -66,7 +66,7 @@ func (s *Service) Shorten(ctx context.Context, rawURL string) (string, error) {
 }
 
 func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
-	link, err := s.storage.Load(ctx, code)
+	link, err := s.storage.Visit(ctx, code)
 
 	if err != nil {
 		return "", err
