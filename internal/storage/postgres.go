@@ -34,14 +34,22 @@ func (p *PostgresStorage) Save(ctx context.Context, link entity.Link) error {
 }
 
 func (p *PostgresStorage) Load(ctx context.Context, code string) (entity.Link, error) {
-	q := `SELECT code, original_url, created_at FROM links WHERE code = $1`
-	row := p.db.QueryRowContext(ctx, q, code)
+	q := `SELECT code, original_url, created_at, visits FROM links WHERE code = $1`
+	return scanLink(p.db.QueryRowContext(ctx, q, code))
+}
 
+func (p *PostgresStorage) Visit(ctx context.Context, code string) (entity.Link, error) {
+	q := `UPDATE links SET visits = visits + 1 WHERE code = $1
+		RETURNING code, original_url, created_at, visits`
+	return scanLink(p.db.QueryRowContext(ctx, q, code))
+}
+
+func scanLink(row *sql.Row) (entity.Link, error) {
 	var link entity.Link
-	err := row.Scan(&link.Code, &link.OriginalURL, &link.CreatedAt)
+	err := row.Scan(&link.Code, &link.OriginalURL, &link.CreatedAt, &link.Visits)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return entity.Link{}, ErrNotFound
 		}
 		return entity.Link{}, err
