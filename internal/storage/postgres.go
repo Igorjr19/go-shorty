@@ -2,9 +2,14 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
+
+	"github.com/lib/pq"
 
 	"github.com/Igorjr19/go-shorty/internal/entity"
 )
+
+const pgUniqueViolation = "23505"
 
 type PostgresStorage struct {
 	db *sql.DB
@@ -19,6 +24,11 @@ func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 func (p *PostgresStorage) Save(link entity.Link) error {
 	q := `INSERT INTO links (code, original_url, created_at) VALUES ($1, $2, $3)`
 	_, err := p.db.Exec(q, link.Code, link.OriginalURL, link.CreatedAt)
+
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == pgUniqueViolation {
+		return ErrCodeExists
+	}
 	return err
 }
 

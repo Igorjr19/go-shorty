@@ -1,6 +1,15 @@
 package storage
 
-import "github.com/Igorjr19/go-shorty/internal/entity"
+import (
+	"errors"
+
+	"github.com/Igorjr19/go-shorty/internal/entity"
+)
+
+var (
+	ErrNotFound   = errors.New("link not found")
+	ErrCodeExists = errors.New("link code already exists")
+)
 
 type Storage interface {
 	Save(entity.Link) error

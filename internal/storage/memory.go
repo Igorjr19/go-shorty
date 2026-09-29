@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/Igorjr19/go-shorty/internal/entity"
@@ -21,6 +20,9 @@ func NewMemoryStorage() *MemoryStorage {
 func (m *MemoryStorage) Save(link entity.Link) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if _, exists := m.data[link.Code]; exists {
+		return ErrCodeExists
+	}
 	m.data[link.Code] = link
 	return nil
 }
@@ -34,5 +36,3 @@ func (m *MemoryStorage) Load(code string) (entity.Link, error) {
 	}
 	return link, nil
 }
-
-var ErrNotFound = fmt.Errorf("link not found")
