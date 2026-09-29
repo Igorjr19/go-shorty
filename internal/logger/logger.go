@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -59,23 +60,32 @@ func GetRequestID(ctx context.Context) string {
 }
 
 func Info(ctx context.Context, msg string, args ...any) {
-	args = addContextAttrs(ctx, args)
-	log.InfoContext(ctx, msg, args...)
+	logAt(ctx, slog.LevelInfo, msg, args)
 }
 
 func Debug(ctx context.Context, msg string, args ...any) {
-	args = addContextAttrs(ctx, args)
-	log.DebugContext(ctx, msg, args...)
+	logAt(ctx, slog.LevelDebug, msg, args)
 }
 
 func Warn(ctx context.Context, msg string, args ...any) {
-	args = addContextAttrs(ctx, args)
-	log.WarnContext(ctx, msg, args...)
+	logAt(ctx, slog.LevelWarn, msg, args)
 }
 
 func Error(ctx context.Context, msg string, args ...any) {
-	args = addContextAttrs(ctx, args)
-	log.ErrorContext(ctx, msg, args...)
+	logAt(ctx, slog.LevelError, msg, args)
+}
+
+func logAt(ctx context.Context, level slog.Level, msg string, args []any) {
+	if !log.Enabled(ctx, level) {
+		return
+	}
+
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:])
+
+	record := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	record.Add(addContextAttrs(ctx, args)...)
+	_ = log.Handler().Handle(ctx, record)
 }
 
 func addContextAttrs(ctx context.Context, args []any) []any {
@@ -96,18 +106,18 @@ func HTTPRequest(ctx context.Context, method, path, ip string, statusCode int, l
 
 	if err != nil {
 		attrs = append(attrs, slog.String("error", err.Error()))
-		Error(ctx, "HTTP request failed", attrs...)
+		logAt(ctx, slog.LevelError, "HTTP request failed", attrs)
 	} else {
-		Info(ctx, "HTTP request", attrs...)
+		logAt(ctx, slog.LevelInfo, "HTTP request", attrs)
 	}
 }
 
 func RateLimitExceeded(ctx context.Context, ip string, limit int, window time.Duration) {
-	Warn(ctx, "Rate limit exceeded",
+	logAt(ctx, slog.LevelWarn, "Rate limit exceeded", []any{
 		slog.String("ip", ip),
 		slog.Int("limit", limit),
 		slog.Duration("window", window),
-	)
+	})
 }
 
 func DatabaseQuery(ctx context.Context, query string, duration time.Duration, err error) {
@@ -118,8 +128,8 @@ func DatabaseQuery(ctx context.Context, query string, duration time.Duration, er
 
 	if err != nil {
 		attrs = append(attrs, slog.String("error", err.Error()))
-		Error(ctx, "Database query failed", attrs...)
+		logAt(ctx, slog.LevelError, "Database query failed", attrs)
 	} else {
-		Debug(ctx, "Database query executed", attrs...)
+		logAt(ctx, slog.LevelDebug, "Database query executed", attrs)
 	}
 }
