@@ -33,9 +33,9 @@ func main() {
 		slog.String("version", "1.0.0"),
 	)
 
-	storage := storage.NewPostgresStorage(config.ConnectDB())
+	store := storage.NewPostgresStorage(config.ConnectDB())
 
-	service := shortener.NewService(storage)
+	service := shortener.NewService(store)
 
 	handler := api.NewHandler(service)
 
