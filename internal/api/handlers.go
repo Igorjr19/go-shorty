@@ -9,6 +9,7 @@ import (
 
 	"github.com/Igorjr19/go-shorty/internal/logger"
 	"github.com/Igorjr19/go-shorty/internal/shortener"
+	"github.com/Igorjr19/go-shorty/internal/storage"
 )
 
 type ShortenRequest struct {
@@ -78,9 +79,17 @@ func (h *Handler) ResolveURL(w http.ResponseWriter, r *http.Request) {
 	logger.Debug(r.Context(), "Resolving short URL", slog.String("code", code))
 
 	url, err := h.service.Resolve(r.Context(), code)
-	if err != nil {
+	if errors.Is(err, storage.ErrNotFound) {
 		logger.Warn(r.Context(), "Short URL not found", slog.String("code", code))
 		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		logger.Error(r.Context(), "Failed to resolve short URL",
+			slog.String("code", code),
+			slog.String("error", err.Error()),
+		)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

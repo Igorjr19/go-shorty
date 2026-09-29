@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Igorjr19/go-shorty/internal/entity"
 	"github.com/Igorjr19/go-shorty/internal/logger"
 	"github.com/Igorjr19/go-shorty/internal/shortener"
 	"github.com/Igorjr19/go-shorty/internal/storage"
@@ -125,4 +128,26 @@ func shorten(t *testing.T, mux *http.ServeMux, body string) *httptest.ResponseRe
 		t.Fatalf("shorten status = %d, want %d (body: %q)", rec.Code, http.StatusCreated, rec.Body.String())
 	}
 	return rec
+}
+
+type failingStorage struct {
+	storage.Storage
+}
+
+func (failingStorage) Load(context.Context, string) (entity.Link, error) {
+	return entity.Link{}, errors.New("connection refused")
+}
+
+func TestResolveURL_StorageError(t *testing.T) {
+	handler := NewHandler(shortener.NewService(failingStorage{}))
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{code}", handler.ResolveURL)
+
+	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
 }
