@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/Igorjr19/go-shorty/internal/config"
+	"github.com/Igorjr19/go-shorty/internal/logger"
 	"github.com/Igorjr19/go-shorty/internal/migrate"
 	"github.com/joho/godotenv"
 )
@@ -13,6 +15,12 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "development"
+	}
+	logger.Init(env)
 
 	direction := flag.String("direction", "up", "Migration direction: up or down")
 	steps := flag.Int("steps", 0, "Number of migrations to run (0 = all)")
