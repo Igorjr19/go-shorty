@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ func NewService(storage storage.Storage) *Service {
 	}
 }
 
-func (s *Service) Shorten(rawURL string) (string, error) {
+func (s *Service) Shorten(ctx context.Context, rawURL string) (string, error) {
 	if err := validateURL(rawURL); err != nil {
 		return "", err
 	}
@@ -50,7 +51,7 @@ func (s *Service) Shorten(rawURL string) (string, error) {
 			CreatedAt:   time.Now(),
 		}
 
-		err = s.storage.Save(link)
+		err = s.storage.Save(ctx, link)
 		if errors.Is(err, storage.ErrCodeExists) {
 			continue
 		}
@@ -64,8 +65,8 @@ func (s *Service) Shorten(rawURL string) (string, error) {
 	return "", ErrCodeGenerationFailed
 }
 
-func (s *Service) Resolve(code string) (string, error) {
-	link, err := s.storage.Load(code)
+func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
+	link, err := s.storage.Load(ctx, code)
 
 	if err != nil {
 		return "", err

@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -19,19 +20,19 @@ func newFakeStorage(saveErrs ...error) *fakeStorage {
 	return &fakeStorage{MemoryStorage: storage.NewMemoryStorage(), saveErrs: saveErrs}
 }
 
-func (f *fakeStorage) Save(link entity.Link) error {
+func (f *fakeStorage) Save(ctx context.Context, link entity.Link) error {
 	f.saveCalls++
 	if f.saveCalls <= len(f.saveErrs) && f.saveErrs[f.saveCalls-1] != nil {
 		return f.saveErrs[f.saveCalls-1]
 	}
-	return f.MemoryStorage.Save(link)
+	return f.MemoryStorage.Save(ctx, link)
 }
 
 func TestService_ShortenAndResolve(t *testing.T) {
 	svc := NewService(storage.NewMemoryStorage())
 	original := "https://example.com/some/path"
 
-	code, err := svc.Shorten(original)
+	code, err := svc.Shorten(t.Context(), original)
 	if err != nil {
 		t.Fatalf("Shorten() error = %v", err)
 	}
@@ -39,7 +40,7 @@ func TestService_ShortenAndResolve(t *testing.T) {
 		t.Errorf("len(code) = %d, want %d", len(code), codeLength)
 	}
 
-	got, err := svc.Resolve(code)
+	got, err := svc.Resolve(t.Context(), code)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -66,7 +67,7 @@ func TestService_ShortenInvalidURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := NewService(storage.NewMemoryStorage())
 
-			_, err := svc.Shorten(tt.url)
+			_, err := svc.Shorten(t.Context(), tt.url)
 			if !errors.Is(err, ErrInvalidURL) {
 				t.Errorf("Shorten(%q) error = %v, want %v", tt.url, err, ErrInvalidURL)
 			}
@@ -88,7 +89,7 @@ func TestService_ShortenValidURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := NewService(storage.NewMemoryStorage())
 
-			if _, err := svc.Shorten(tt.url); err != nil {
+			if _, err := svc.Shorten(t.Context(), tt.url); err != nil {
 				t.Errorf("Shorten(%q) error = %v", tt.url, err)
 			}
 		})
@@ -99,7 +100,7 @@ func TestService_ShortenGeneratesValidCodes(t *testing.T) {
 	svc := NewService(storage.NewMemoryStorage())
 
 	for range 100 {
-		code, err := svc.Shorten("https://example.com")
+		code, err := svc.Shorten(t.Context(), "https://example.com")
 		if err != nil {
 			t.Fatalf("Shorten() error = %v", err)
 		}
@@ -115,7 +116,7 @@ func TestService_ShortenRetriesOnCollision(t *testing.T) {
 	fake := newFakeStorage(storage.ErrCodeExists, storage.ErrCodeExists)
 	svc := NewService(fake)
 
-	code, err := svc.Shorten("https://example.com")
+	code, err := svc.Shorten(t.Context(), "https://example.com")
 	if err != nil {
 		t.Fatalf("Shorten() error = %v", err)
 	}
@@ -123,7 +124,7 @@ func TestService_ShortenRetriesOnCollision(t *testing.T) {
 		t.Errorf("saveCalls = %d, want 3", fake.saveCalls)
 	}
 
-	got, err := svc.Resolve(code)
+	got, err := svc.Resolve(t.Context(), code)
 	if err != nil || got != "https://example.com" {
 		t.Errorf("Resolve(%q) = %q, %v", code, got, err)
 	}
@@ -137,7 +138,7 @@ func TestService_ShortenGivesUpAfterMaxRetries(t *testing.T) {
 	fake := newFakeStorage(errs...)
 	svc := NewService(fake)
 
-	_, err := svc.Shorten("https://example.com")
+	_, err := svc.Shorten(t.Context(), "https://example.com")
 	if !errors.Is(err, ErrCodeGenerationFailed) {
 		t.Errorf("Shorten() error = %v, want %v", err, ErrCodeGenerationFailed)
 	}
@@ -151,7 +152,7 @@ func TestService_ShortenReturnsStorageError(t *testing.T) {
 	fake := newFakeStorage(storageErr)
 	svc := NewService(fake)
 
-	_, err := svc.Shorten("https://example.com")
+	_, err := svc.Shorten(t.Context(), "https://example.com")
 	if !errors.Is(err, storageErr) {
 		t.Errorf("Shorten() error = %v, want %v", err, storageErr)
 	}
@@ -163,7 +164,7 @@ func TestService_ShortenReturnsStorageError(t *testing.T) {
 func TestService_ResolveNotFound(t *testing.T) {
 	svc := NewService(storage.NewMemoryStorage())
 
-	_, err := svc.Resolve("missing")
+	_, err := svc.Resolve(t.Context(), "missing")
 	if !errors.Is(err, storage.ErrNotFound) {
 		t.Errorf("Resolve() error = %v, want %v", err, storage.ErrNotFound)
 	}
